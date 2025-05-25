@@ -46,13 +46,14 @@ resample = Resample(orig_freq=32000, new_freq=16000)
 layout = dbc.Container([
     dcc.Store(id="spectrogram"),
     dcc.Store(id="vad-predictions"),
-    dbc.Row([
-        html.Div(
-            'Spectrograms',
-            className="text-primary text-center fs-3",
-            style={'padding': '20px'}
-        )
-    ]),
+    # dbc.Row([
+    #     html.Div(
+    #         'Spectrograms',
+    #         className="text-primary text-center fs-3",
+    #         style={'padding': '20px'}
+    #     )
+    # ]),
+    html.Div(style={'height': '30px'}),
     dbc.Row(
         [
             dbc.Col(

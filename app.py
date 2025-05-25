@@ -1,5 +1,5 @@
 import dash
-from dash import Dash, html, dcc, callback, Output, Input
+from dash import Dash
 import dash_bootstrap_components as dbc
 
 
@@ -10,8 +10,8 @@ app.layout = dbc.Container(
     [
         dbc.Nav(
             [
-                dbc.NavItem(dbc.NavLink("Home", active="exact", href="/home")),
-                dbc.NavItem(dbc.NavLink("Spectrograms", active="exact", href="/spectrograms")),
+                dbc.NavItem(dbc.NavLink("Home", active="exact", href="/", style={"fontSize": "17px"})),
+                dbc.NavItem(dbc.NavLink("Spectrograms", active="exact", href="/spectrograms", style={"fontSize": "17px"})),
             ],
             pills=False,
             fill=True,
