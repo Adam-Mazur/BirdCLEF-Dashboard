@@ -1,13 +1,13 @@
 import dash
-from dash import dcc, html, Input, Output
+from dash import dcc, html, Input, Output, callback
 import plotly.express as px
 import pandas as pd
 
 # Load and merge data
 try:
     # Load the CSV files
-    train_df = pd.read_csv('train.csv')
-    taxonomy_df = pd.read_csv('taxonomy.csv')
+    train_df = pd.read_csv('data/train.csv')
+    taxonomy_df = pd.read_csv('data/taxonomy.csv')
     
     # Merge train_df with taxonomy_df based on 'scientific_name'
     # This adds the 'class_name' column to each row in train_df
@@ -33,11 +33,7 @@ except Exception as e:
     print(f"Error processing data: {e}")
     merged_df = pd.DataFrame()
 
-# Initialize the Dash app with suppress_callback_exceptions=True
-app = dash.Dash(__name__, suppress_callback_exceptions=True)
-
-# Define the app layout
-app.layout = html.Div([
+layout = html.Div([
     html.H1("Dashboard", 
             style={
                 'textAlign': 'center',
@@ -64,7 +60,7 @@ app.layout = html.Div([
 ])
 
 # Callback to render tab content
-@app.callback(Output('tab-content', 'children'),
+@callback(Output('tab-content', 'children'),
               Input('tabs', 'value'))
 def render_content(tab):
     if tab == 'tab-1':
@@ -267,7 +263,7 @@ def render_content(tab):
         ])
 
 # Callback to populate class selector dropdown
-@app.callback(
+@callback(
     Output('class-selector', 'options'),
     Input('tabs', 'value')
 )
@@ -278,7 +274,7 @@ def update_class_options(tab):
     return []
 
 # Callback for the interactive plot
-@app.callback(
+@callback(
     Output('scientific-names-plot', 'figure'),
     [Input('num-names-slider', 'value'),
      Input('frequency-type', 'value'),
@@ -363,7 +359,7 @@ def update_plot(num_names, frequency_type, selected_classes):
     return fig
 
 # Callback to populate map class selector dropdown
-@app.callback(
+@callback(
     Output('map-class-selector', 'options'),
     Input('tabs', 'value')
 )
@@ -374,7 +370,7 @@ def update_map_class_options(tab):
     return []
 
 # Callback to populate author selector dropdown
-@app.callback(
+@callback(
     Output('author-selector', 'options'),
     Input('tabs', 'value')
 )
@@ -386,7 +382,7 @@ def update_author_options(tab):
     return []
 
 # Callback to populate scientific name search dropdown
-@app.callback(
+@callback(
     Output('scientific-name-search', 'options'),
     [Input('tabs', 'value'),
      Input('map-class-selector', 'value'),
@@ -409,7 +405,7 @@ def update_scientific_name_options(tab, selected_classes, selected_authors):
     return []
 
 # Callback for the geographic scatter plot
-@app.callback(
+@callback(
     Output('geographic-scatter-plot', 'figure'),
     [Input('map-class-selector', 'value'),
      Input('author-selector', 'value'),
@@ -520,7 +516,7 @@ def update_geographic_plot(selected_classes, selected_authors, selected_scientif
 # NEW CALLBACKS FOR MULTI-CLASS SPECIES SEARCH
 
 # Callback to populate species class filter dropdown
-@app.callback(
+@callback(
     Output('species-class-filter', 'options'),
     Input('tabs', 'value')
 )
@@ -531,7 +527,7 @@ def update_species_class_filter_options(tab):
     return []
 
 # Callback to populate species selector dropdown based on class filter
-@app.callback(
+@callback(
     Output('species-selector', 'options'),
     [Input('tabs', 'value'),
      Input('species-class-filter', 'value')]
@@ -550,7 +546,7 @@ def update_species_options(tab, selected_class):
     return []
 
 # Callback to clear species selection when class filter changes
-@app.callback(
+@callback(
     Output('species-selector', 'value'),
     Input('species-class-filter', 'value')
 )
@@ -558,7 +554,7 @@ def clear_species_selection(selected_class):
     return None
 
 # Callback to update species info display and button state
-@app.callback(
+@callback(
     [Output('species-info-display', 'children'),
      Output('external-link-button', 'disabled'),
      Output('external-link-button', 'style'),
@@ -688,7 +684,7 @@ def update_species_info(selected_species):
         )
 
 # Callback to handle external link button clicks
-@app.callback(
+@callback(
     Output('external-link-button', 'n_clicks'),
     [Input('external-link-button', 'n_clicks'),
      Input('species-selector', 'value')],
@@ -718,6 +714,4 @@ def handle_external_link_button_click(n_clicks, selected_species):
     
     return 0  # Reset click count
 
-# Run the app
-if __name__ == '__main__':
-    app.run(debug=True)
+dash.register_page("Home", path='/home', layout=layout, name="Home")
