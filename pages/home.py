@@ -342,7 +342,7 @@ def update_pie_chart(name, author, collection, rating):
             y=1.4,
             borderwidth=0,
             bgcolor='rgba(255,255,255,0.8)',
-            font=dict(size=14)
+            font=dict(size=14.2)
         ),
     )
 

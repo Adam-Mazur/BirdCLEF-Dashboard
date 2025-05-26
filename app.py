@@ -15,10 +15,10 @@ app.layout = dbc.Container(
                 dbc.NavItem(dbc.NavLink("Predictions", active="exact", href="/predictions", style={"fontSize": "17px"})),
                 dbc.NavItem(dbc.NavLink("About", active="exact", href="/about", style={"fontSize": "17px"})),
             ],
-            pills=False,
+            pills=True,
             fill=True,
             className="border",
-            style={"margin": "0", "padding": "0"}
+            style={"margin": "0px", "padding": "5px"}
         ),
         dash.page_container,
     ],

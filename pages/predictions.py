@@ -322,7 +322,7 @@ def cam_graph(data):
         aspect='auto',
         color_continuous_scale='plasma',
         labels={'x': 'Time (s)', 'y': 'Mel Bin', 'color': 'Power (dB)'},
-        title='Class activation map',
+        title='Class Activation Map',
         x=np.linspace(0, 5, spectrogram.shape[1])
     )
     fig.add_trace(
