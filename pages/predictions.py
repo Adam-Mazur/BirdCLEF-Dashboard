@@ -67,7 +67,7 @@ class BirdCLEFModel(nn.Module):
         self.base_model.classifier[1] = nn.Linear(old_fc.in_features, 206)
         
         # Loading the checkpoint
-        checkpoint = torch.load(path)
+        checkpoint = torch.load(path, map_location=torch.device('cpu'))
         self.load_state_dict(checkpoint)
         self.base_model.eval()
     
@@ -244,6 +244,10 @@ def update_spectrogram(data, time_value):
 
     audio = decode_array(audio)
     audio = torch.tensor(audio, dtype=torch.float32)
+    
+    if time_value * SAMPLE_RATE >= audio.shape[1]:
+        time_value = 0
+        
     audio = audio[:, time_value * SAMPLE_RATE:(time_value + 5) * SAMPLE_RATE]
 
     spectrogram = mel_transform(audio)
@@ -281,16 +285,16 @@ def cam_graph(data):
     def backward_hook(module, grad_input, grad_output):
         gradients.append(grad_output[0])
         
-    target_layer = model.features[-1][0]  
+    target_layer = model.base_model.features[-1][0]  
     handle_fwd = target_layer.register_forward_hook(forward_hook)
     handle_bwd = target_layer.register_backward_hook(backward_hook)
 
-    input_tensor = torch.tensor(spectrogram, dtype=torch.float32)
+    input_tensor = torch.tensor(spectrogram, dtype=torch.float32).unsqueeze(0)
     
     if input_tensor.shape != (256, 256):
         input_tensor = resize(input_tensor)
         
-    input_tensor = input_tensor.unsqueeze(0).unsqueeze(0)  # shape: (1, 1, 256, 256)
+    input_tensor = input_tensor.unsqueeze(0)  # shape: (1, 1, 256, 256)
     
     output = model(input_tensor)
     class_idx = output.argmax().item()
@@ -318,15 +322,15 @@ def cam_graph(data):
         aspect='auto',
         color_continuous_scale='plasma',
         labels={'x': 'Time (s)', 'y': 'Mel Bin', 'color': 'Power (dB)'},
-        title='Mel Spectrogram (Settings)',
+        title='Class activation map',
         x=np.linspace(0, 5, spectrogram.shape[1])
     )
     fig.add_trace(
         go.Heatmap(
             z=cam,
             x=np.linspace(0, 5, cam.shape[1]),
-            y=list(range(spectrogram.shape[0])),  # mel bins
-            colorscale='gray',  # or try 'hot', 'viridis', etc.
+            y=np.linspace(0, spectrogram.shape[0], cam.shape[0]),
+            colorscale='gray',
             opacity=0.4,
             showscale=False
         )
