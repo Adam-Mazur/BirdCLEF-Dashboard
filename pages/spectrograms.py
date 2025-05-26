@@ -362,7 +362,7 @@ def main_spectrogram(data):
         aspect='auto',
         color_continuous_scale='plasma',
         labels={'x': 'Time (s)', 'y': 'Mel Bin', 'color': 'Power (dB)'},
-        title='Mel Spectrogram (Settings)',
+        title='Mel Spectrogram (for Different Settings)',
         x=x_vals
     )
     fig.update_xaxes(

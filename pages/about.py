@@ -22,7 +22,7 @@ layout = dbc.Container([
 
         "The Spectrograms page analyzes the Mel spectrograms generated from the audio recordings. Most machine learning models used in this competition first convert the audio signals to spectrograms to then use computer vision models on them. This page compares different settings of Mel spectrograms and also compares different voice activity detection settings on them, as the recordings contains many human voices along with animal sounds.\n\n",
 
-        "The Predictions page analyzes a basic's CNN model predictions on those sounds. In particular, it shows the class activation mapping on a given audio segment. It also analyzes the predicted labels given some post-processing hyperparameters.\n\n",
+        "The Predictions page analyzes a basic's CNN model predictions on those sounds. In particular, it shows the class activation map on a given audio segment. It also analyzes the predicted labels given some post-processing hyperparameters.\n\n",
     ], className="lead text-justify", style={'color': '#34495e', 'line-height': '1.6', 'padding-left': '3rem', 'padding-right': '3rem', 'white-space': 'pre-line'})
 ], fluid=True, className="py-4")
 

@@ -1,6 +1,8 @@
 import dash
 from dash import Dash
 import dash_bootstrap_components as dbc
+import warnings
+warnings.filterwarnings("ignore")
 
 
 name = "BirdCLEF Dashboard"

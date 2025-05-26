@@ -15,6 +15,7 @@ import torch.nn as nn
 from torchvision import models
 import torchvision
 import torch.nn.functional as F
+from pathlib import Path
 
 
 # Random stuff
@@ -36,6 +37,62 @@ mel_transform = torchaudio.transforms.MelSpectrogram(
     f_max=14000,
     power=2
 )
+
+def to_spectogram(audio):
+    mel_spec = mel_transform(audio)
+
+    mel_spec_db = db_transform(mel_spec)
+    mel_spectogram = (mel_spec_db - mel_spec_db.min()) / (mel_spec_db.max() - mel_spec_db.min() + 1e-8)
+    
+    # Reshaping it to (256, 256)
+    if mel_spectogram.shape != (256, 256):
+        mel_spectogram = resize(mel_spectogram)
+        
+    return mel_spectogram
+
+def get_segments(audio_data):
+    audio_segments = []
+    total_segments = int(audio_data.shape[1] / (SAMPLE_RATE * 5))
+
+    for segment_idx in range(total_segments):
+        start_sample = segment_idx * SAMPLE_RATE * 5
+        end_sample = start_sample + SAMPLE_RATE * 5
+        segment_audio = audio_data[:, start_sample:end_sample]
+        
+        
+        # Pad the audio if it is shorter than the required window size
+        # TODO: Change this
+        if segment_audio.shape[1] < SAMPLE_RATE * 5:
+            segment_audio = F.pad(
+                segment_audio,
+                (0, SAMPLE_RATE * 5 - segment_audio.shape[1]),
+                mode='constant'
+            )
+
+        audio_segments.append(segment_audio)
+
+    audio_segments = torch.stack(audio_segments)
+    
+    spectograms = to_spectogram(audio_segments)
+    spectograms = spectograms.float()
+
+    return spectograms
+
+def apply_power_to_low_ranked_cols(
+    p: np.ndarray,
+    top_k: int = 30,
+    exponent = 2,
+    inplace: bool = True
+) -> np.ndarray:
+    if not inplace:
+        p = p.copy()
+
+    # Identify columns whose max value ranks below `top_k`
+    tail_cols = np.argsort(-p.max(axis=0))[top_k:]
+
+    # Apply the power transformation to those columns
+    p[:, tail_cols] = p[:, tail_cols] ** exponent
+    return p
 
 resize = torchvision.transforms.Resize((256, 256))
 
@@ -81,6 +138,7 @@ model = BirdCLEFModel("resources/20-5-10-29.pt")
 layout = dbc.Container([
     dcc.Store(id="audio"),
     dcc.Store(id="spectrogram2"),
+    dcc.Store(id="predictions"),
     html.Div(style={'height': '30px'}),
     dbc.Row(
         [
@@ -136,6 +194,7 @@ layout = dbc.Container([
                 [
                     dcc.Graph(figure={}, id="cam-graph"),
                     html.Div(style={'height': '40px'}),
+                    html.Label("Time slider (seconds)", style={'paddingLeft': '30px'}),
                     dbc.Container([
                         dbc.Row([
                             html.Div(
@@ -181,6 +240,46 @@ layout = dbc.Container([
             'width': '95%',
         },
         fluid=True
+    ),
+    dbc.Row(
+        [
+            dbc.Col(
+                dcc.Graph(figure={}, id="predictions-graph")
+            ),
+            dbc.Col(
+                [
+                    html.Label("Top K predictions"),
+                    dcc.Input(
+                        id='TOP_K', type='number', min=1, max=100, step=1,
+                        debounce=True, value=30,
+                        style={'width': '100%'}
+                    ),
+                    html.Div(style={'height': '10px'}),
+                    html.Label("Exponent"),
+                    dcc.Input(
+                        id='EXPONENT', type='number', min=1, max=10, step=0.1,
+                        debounce=True, value=2,
+                        style={'width': '100%'}
+                    ),
+                    html.Div(style={'height': '10px'}),
+                    html.Label("Smoothing param. 1"),
+                    dcc.Input(
+                        id='P1', type='number', min=0.01, max=1.0, step=0.01,
+                        debounce=True, value=0.2,
+                        style={'width': '100%'}
+                    ),
+                    html.Div(style={'height': '10px'}),
+                    html.Label("Smoothing param. 2"),
+                    dcc.Input(
+                        id='P2', type='number', min=0.01, max=1.0, step=0.01,
+                        debounce=True, value=0.8,
+                        style={'width': '100%'}
+                    )
+                ],
+                width=2
+            )
+        ],
+        align="center"
     ),
 ])
 
@@ -356,6 +455,95 @@ def cam_graph(data):
         margin=dict(l=0, r=0, t=40, b=0)
     )
     fig.update_layout(margin=dict(l=20, r=20, t=40, b=20))
+    
+    return fig
+
+@callback(
+    Output(component_id='predictions', component_property='data'),
+    Input(component_id='audio', component_property='data'),
+)
+def generate_predictions(audio):
+    audio_data = audio.get("audio", None)
+    if audio_data is None:
+        return {}
+    
+    audio_data = decode_array(audio_data)
+    audio_data = torch.tensor(audio_data, dtype=torch.float32)
+    
+    spectograms = get_segments(audio_data)
+    
+    with torch.no_grad():
+        outputs = model(spectograms)
+        predictions = torch.sigmoid(outputs)
+        predictions = predictions.cpu().numpy().squeeze()
+
+    buffer_preds = BytesIO()
+    np.save(buffer_preds, predictions)
+    
+    return {
+        "predictions": base64.b64encode(buffer_preds.getvalue()).decode('utf-8')
+    }
+
+@callback(
+    Output(component_id='predictions-graph', component_property='figure'),
+    Input(component_id='predictions', component_property='data'),
+    Input(component_id='TOP_K', component_property='value'),
+    Input(component_id='EXPONENT', component_property='value'),
+    Input(component_id='P1', component_property='value'),
+    Input(component_id='P2', component_property='value')
+)
+def predictions_graph(data, top_k, exponent, p1, p2):
+    predictions = data.get("predictions", None)
+    
+    if predictions is None:
+        return go.Figure()
+    
+    predictions = decode_array(predictions)
+    
+    predictions = apply_power_to_low_ranked_cols(predictions, top_k=top_k, exponent=exponent)
+    
+    new_predictions = predictions.copy()
+    
+    if predictions.shape[0] > 1:        
+        for i in range(1, predictions.shape[0]-1):
+            new_predictions[i] = (predictions[i-1] * p1) + (predictions[i] * (1 - 2 * p1)) + (predictions[i+1] * p1)
+        
+        new_predictions[0] = (predictions[0] * p2) + (predictions[1] * (1-p2))
+        new_predictions[-1] = (predictions[-1] * p2) + (predictions[-2] * (1-p2))
+
+    predictions = (predictions - predictions.min()) / (predictions.max() - predictions.min() + 1e-8)
+    heatmap_data = predictions.T
+    
+    time_labels = list(range(0, len(predictions) * 5, 5))
+        
+    # Create the heatmap
+    fig = go.Figure(data=go.Heatmap(
+        z=heatmap_data,
+        x=time_labels,
+        y=list(range(predictions.shape[1])),
+        colorscale='Blues',
+        zmin=0,
+        zmax=1,
+        colorbar=dict(
+            title="Probability"
+        ),
+        hovertemplate='Time: %{x}s<br>Species: %{y}<br>Probability: %{z:.3f}<extra></extra>'
+    ))
+    
+    fig.update_layout(
+        plot_bgcolor='white',
+        paper_bgcolor='white',
+        font=dict(family="Arial", size=14),
+        title_font=dict(size=20, family="Arial"),
+        title=f"Predictions Heatmap (for different post-processing parameters)",
+        xaxis_title="Time (s)",
+        yaxis_title="Species",
+    )
+    
+    fig.update_xaxes(
+        tickvals=time_labels,
+        ticktext=time_labels
+    )
     
     return fig
 

@@ -259,7 +259,7 @@ def update_geographic_plot(name, author, collection, rating):
         color='class_name',
         color_discrete_map=color_map,
         hover_data=hover_data,
-        title='Geographic Distribution of Animal recordings',
+        title='Geographic Distribution of Animal Recordings',
         labels={
             'longitude': 'Longitude',
             'latitude': 'Latitude',
