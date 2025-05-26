@@ -32,4 +32,4 @@ app.layout = dbc.Container(
 server = app.server
 
 if __name__ == '__main__':
-    app.run(debug=False)
+    app.run(debug=False, port=10000, host='0.0.0.0')
