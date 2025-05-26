@@ -7,11 +7,15 @@ import plotly.express as px
 import plotly.graph_objs as go
 import numpy as np
 import torch
-from torchaudio.transforms import Resample
 import base64
 from io import BytesIO
 import wave
 from load_data import train_df as df
+import torch.nn as nn
+from torchvision import models
+import torchvision
+import torch.nn.functional as F
+
 
 # Random stuff
 SAMPLE_RATE = 32000
@@ -32,6 +36,46 @@ mel_transform = torchaudio.transforms.MelSpectrogram(
     f_max=14000,
     power=2
 )
+
+resize = torchvision.transforms.Resize((256, 256))
+
+class BirdCLEFModel(nn.Module):
+    def __init__(self, path):
+        super().__init__()
+        
+        self.base_model = models.efficientnet_b0(weights=None)
+        
+        # Removing the first conv layer and replacing it 
+        # with a 1 channel version
+        old_conv = self.base_model.features[0][0]
+        new_conv = nn.Conv2d(
+            in_channels=1,
+            out_channels=old_conv.out_channels,
+            kernel_size=old_conv.kernel_size,
+            stride=old_conv.stride,
+            padding=old_conv.padding,
+            bias=old_conv.bias is not None
+        )
+
+        with torch.no_grad():
+            new_conv.weight[:] = old_conv.weight.mean(dim=1, keepdim=True)
+
+        self.base_model.features[0][0] = new_conv
+        
+        # Removing the old classifier
+        old_fc = self.base_model.classifier[1]
+        self.base_model.classifier[1] = nn.Linear(old_fc.in_features, 206)
+        
+        # Loading the checkpoint
+        checkpoint = torch.load(path)
+        self.load_state_dict(checkpoint)
+        self.base_model.eval()
+    
+    def forward(self, x):
+        return self.base_model(x)  
+
+model = BirdCLEFModel("resources/20-5-10-29.pt")
+
 
 # Layout
 layout = dbc.Container([
@@ -220,13 +264,53 @@ def update_spectrogram(data, time_value):
     Output(component_id='cam-graph', component_property='figure'),
     Input(component_id="spectrogram2", component_property="data")
 )
-def main_spectrogram(data):
+def cam_graph(data):
     spectrogram = data.get("spectrogram", None)
     
-    spectrogram = decode_array(spectrogram)   
+    if spectrogram is None:
+        return go.Figure()
     
-    num_frames = spectrogram.shape[1]
-    x_vals = np.linspace(0, 5, num_frames)
+    spectrogram = decode_array(spectrogram)   
+        
+    features = []
+    gradients = []
+
+    def forward_hook(module, input, output):
+        features.append(output)
+
+    def backward_hook(module, grad_input, grad_output):
+        gradients.append(grad_output[0])
+        
+    target_layer = model.features[-1][0]  
+    handle_fwd = target_layer.register_forward_hook(forward_hook)
+    handle_bwd = target_layer.register_backward_hook(backward_hook)
+
+    input_tensor = torch.tensor(spectrogram, dtype=torch.float32)
+    
+    if input_tensor.shape != (256, 256):
+        input_tensor = resize(input_tensor)
+        
+    input_tensor = input_tensor.unsqueeze(0).unsqueeze(0)  # shape: (1, 1, 256, 256)
+    
+    output = model(input_tensor)
+    class_idx = output.argmax().item()
+    
+    model.zero_grad()
+    output[0, class_idx].backward()
+    
+    grads = gradients[0]
+    fmap = features[0]
+    weights = grads.mean(dim=(2, 3), keepdim=True)
+
+    cam = (weights * fmap).sum(dim=1, keepdim=True)
+    cam = torch.relu(cam)
+    cam = F.interpolate(cam, size=input_tensor.shape[2:], mode='bilinear', align_corners=False)
+    cam = cam.squeeze().cpu().detach().numpy()
+    
+    cam = (cam - cam.min()) / (cam.max() - cam.min() + 1e-8)
+    
+    handle_fwd.remove()
+    handle_bwd.remove()
 
     fig = px.imshow(
         spectrogram,
@@ -235,7 +319,17 @@ def main_spectrogram(data):
         color_continuous_scale='plasma',
         labels={'x': 'Time (s)', 'y': 'Mel Bin', 'color': 'Power (dB)'},
         title='Mel Spectrogram (Settings)',
-        x=x_vals
+        x=np.linspace(0, 5, spectrogram.shape[1])
+    )
+    fig.add_trace(
+        go.Heatmap(
+            z=cam,
+            x=np.linspace(0, 5, cam.shape[1]),
+            y=list(range(spectrogram.shape[0])),  # mel bins
+            colorscale='gray',  # or try 'hot', 'viridis', etc.
+            opacity=0.4,
+            showscale=False
+        )
     )
     fig.update_xaxes(
         showgrid=True, gridwidth=1, gridcolor='rgba(200,200,200,0.3)',
