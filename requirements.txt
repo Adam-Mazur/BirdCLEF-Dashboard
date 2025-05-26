@@ -9,3 +9,4 @@ dash-design-kit==0.0.1
 pandas==2.2.0
 pillow==11.2.1
 gunicorn
+kaggle

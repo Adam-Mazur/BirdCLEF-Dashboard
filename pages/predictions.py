@@ -290,7 +290,7 @@ layout = dbc.Container([
     Input(component_id='data-table2', component_property='selected_rows'),
 )
 def update_audio_settings(rows):
-    audio_path = "/mnt/c/users/adamm/documents/code/bird_clef_2025/bird_clef/data/train_audio/"
+    audio_path = "data/train_audio/"
     audio_path += df.loc[rows[0], "filename"]
     
     audio, _ = torchaudio.load(audio_path) 

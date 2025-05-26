@@ -237,7 +237,7 @@ def update_mel_settings(rows, N_FFT, HOP_LENGTH, N_MELS, FMIN, FMAX, POWER):
         power=POWER
     )
     
-    audio_path = "/mnt/c/users/adamm/documents/code/bird_clef_2025/bird_clef/data/train_audio/"
+    audio_path = "data/train_audio/"
     audio_path += df.loc[rows[0], "filename"]
     
     audio, _ = torchaudio.load(audio_path) 
