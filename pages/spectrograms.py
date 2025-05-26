@@ -1,7 +1,6 @@
 import dash
 from dash import Dash, html, dash_table
 import dash_bootstrap_components as dbc
-import pandas as pd
 from dash import dcc, Input, Output, callback
 import torchaudio
 import plotly.express as px
@@ -12,12 +11,7 @@ from torchaudio.transforms import Resample
 import base64
 from io import BytesIO
 import wave
-
-
-# Loading the data
-df = pd.read_csv("data/train.csv")
-column_options = [{'label': col, 'value': col} for col in df.columns]
-
+from load_data import train_df as df
 
 # Random stuff
 SAMPLE_RATE = 32000
@@ -46,13 +40,6 @@ resample = Resample(orig_freq=32000, new_freq=16000)
 layout = dbc.Container([
     dcc.Store(id="spectrogram"),
     dcc.Store(id="vad-predictions"),
-    # dbc.Row([
-    #     html.Div(
-    #         'Spectrograms',
-    #         className="text-primary text-center fs-3",
-    #         style={'padding': '20px'}
-    #     )
-    # ]),
     html.Div(style={'height': '30px'}),
     dbc.Row(
         [

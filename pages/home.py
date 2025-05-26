@@ -2,19 +2,7 @@ import dash
 from dash import dcc, html, Input, Output, callback
 import dash_bootstrap_components as dbc
 import plotly.express as px
-import pandas as pd
-
-# Load the data
-train_df = pd.read_csv('data/train.csv')
-taxonomy_df = pd.read_csv('data/taxonomy.csv')
-
-merged_df = train_df.merge(
-    taxonomy_df[['scientific_name', 'class_name']], 
-    on='scientific_name', 
-    how='left'
-)    
-
-merged_df['author'] = merged_df['author'].astype(str).str.strip()
+from load_data import merged_df
 
 # Random stuff
 name_options = [{'label': name, 'value': name} for name in merged_df['common_name'].dropna().unique()]
@@ -30,13 +18,6 @@ color_map = dict(zip(unique_classes, colors))
 # Layout
 layout = html.Div(
     [
-        # dbc.Row([
-        #     html.Div(
-        #         'Home',
-        #         className="text-primary text-center fs-3",
-        #         style={'padding': '20px'}
-        #     )
-        # ]),
         html.Div(style={'height': '30px'}),
         dbc.Row(
             [
