@@ -1,10 +1,15 @@
 from dash import html
 import dash_bootstrap_components as dbc
 import dash
-
+from PIL import Image
 
 # Layout
 layout = dbc.Container([
+    html.Img(
+        src=Image.open('resources/PP_logotyp_ANG_RGB.png'),
+        style={'width': '80vw', 'maxWidth': '80%', 'display': 'block', 'margin': '0 auto'}
+    ),
+    
     html.Div(style={'height': '30px'}),
     
     html.H1("BirdCLEF Dashboards", className="text-center mb-4", style={'color': '#2c3e50'}),
