@@ -29,5 +29,7 @@ app.layout = dbc.Container(
     style={"padding": "0", "margin": "0"}
 )
 
+server = app.server
+
 if __name__ == '__main__':
-    app.run(debug=True, port=8052)
+    app.run(debug=False)
