@@ -13,6 +13,7 @@ app.layout = dbc.Container(
                 dbc.NavItem(dbc.NavLink("Home", active="exact", href="/", style={"fontSize": "17px"})),
                 dbc.NavItem(dbc.NavLink("Spectrograms", active="exact", href="/spectrograms", style={"fontSize": "17px"})),
                 dbc.NavItem(dbc.NavLink("Predictions", active="exact", href="/predictions", style={"fontSize": "17px"})),
+                dbc.NavItem(dbc.NavLink("About", active="exact", href="/about", style={"fontSize": "17px"})),
             ],
             pills=False,
             fill=True,
@@ -27,4 +28,4 @@ app.layout = dbc.Container(
 )
 
 if __name__ == '__main__':
-    app.run(debug=True, port=8051)
+    app.run(debug=True, port=8052)
